@@ -7,6 +7,7 @@ using ArnoldiMethod: LR
 using SparseArrays: sparse
 using Test
 
+
 """ Spectral embedding of the non-backtracking matrix of `g`
 (see [Krzakala et al.](http://www.pnas.org/content/110/52/20935.short)).
 
@@ -120,5 +121,22 @@ end
         end
     end
 end
+
+@testset "Louvain" begin
+    # create test network
+    g = Graph(5);
+    add_edge!(g,1,2);
+    add_edge!(g,1,3);
+    add_edge!(g,2,3);
+    add_edge!(g,3,4);
+    add_edge!(g,3,5);
+    add_edge!(g,4,5);
+    println(length(all_neighbors(g,3)));
+    community_membership = [1,1,1,2,2];
+
+    # test modularity
+    q = modularity(g,community_membership);
+    @test q == 1.0/9;
+    end
 
 end

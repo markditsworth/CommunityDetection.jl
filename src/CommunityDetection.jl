@@ -7,6 +7,39 @@ using Clustering: kmeans
 export community_detection_nback, community_detection_bethe
 
 """
+    community_detection_louvain(g::AbstractGraph)
+
+Return an array, indexed by vertex, containing community assignments for
+graph `g`. Community detection is performed by using a modularity maximizing
+heuristic.
+"""
+
+"""
+    modularity(g::AbstactGraph, memberhsip::AbstractArray)
+Calculates the difference between the fraction of edges between nodes of similar
+community membership, and the fraction expected at random. Does not yet work
+for nodes with weighted edges. Need to figure out how LightGraphs handles
+edge weights.
+"""
+function modularity(g::AbstractGraph, membership::AbstractArray)
+	sum = 0;
+	for i in vertices(g)
+		for j in vertices(g)
+			if membership[i] == membership[j] # if nodes are in same cmty
+				if has_edge(g,i,j)
+					sum += 1;
+				end
+				ki = length(all_neighbors(g,i));
+				kj = length(all_neighbors(g,j));
+				sum -= (ki*kj)/(2*ne(g));
+			end
+		end
+	end
+	return sum/(2*ne(g))
+end
+
+
+"""
     community_detection_nback(g::AbstractGraph, k::Int)
 
 Return an array, indexed by vertex, containing commmunity assignments for
