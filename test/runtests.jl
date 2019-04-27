@@ -1,4 +1,6 @@
-using CommunityDetection
+#using CommunityDetection
+include("/opt/src/CommunityDetection.jl")
+using .CommunityDetection
 using LightGraphs
 using LinearAlgebra: I, norm
 using ArnoldiMethod: LR
