@@ -1,43 +1,125 @@
 module CommunityDetection
-using LightGraphs
+using LightGraphs, SimpleWeightedGraphs
 using ArnoldiMethod: LR, SR
 using LinearAlgebra: I, Diagonal
 using Clustering: kmeans
 
 export community_detection_nback, community_detection_bethe
 
-"""
-    community_detection_louvain(g::AbstractGraph)
-
-Return an array, indexed by vertex, containing community assignments for
-graph `g`. Community detection is performed by using a modularity maximizing
-heuristic.
-"""
+mutable struct Community
+	inner::Number # sum of the edge weights inside the community
+	into::Number # sum of the edge weights incident to the community
+	members::AbstractArray # array of the node in the community
+end
 
 """
-    modularity(g::AbstactGraph, memberhsip::AbstractArray)
-Calculates the difference between the fraction of edges between nodes of similar
-community membership, and the fraction expected at random. Does not yet work
-for nodes with weighted edges. Need to figure out how LightGraphs handles
-edge weights.
+    louvain_step(g::SimpleWeightedGraph, membership::AbstractArray)
+
+Return an updated membership array after one iteration of the first step in Louvain
+community detection.
 """
-function modularity(g::AbstractGraph, membership::AbstractArray)
-	sum = 0;
-	for i in vertices(g)
-		for j in vertices(g)
-			if membership[i] == membership[j] # if nodes are in same cmty
-				if has_edge(g,i,j)
-					sum += 1;
+
+function louvain_step(g::SimpleWeightedGraph, membership::AbstractArray)
+	changed = true;
+	while changed
+		changed = false
+		cset = create_communityset(g,membership);
+		for v in vertices(g)
+			ki = length(all_neighbors(g,v));
+			dqs = [];
+			for neighbor in all_neighbors(g,v)
+				sum_in = cset[membership[neighbor]].inner;
+				sum_to = cset[membership[neighbor]].into;
+				kiin=0;
+				for n in cset[membership[neighbor]].members
+					if has_edge(g,v,n)
+						kiin += g.weights[v,n];
+					end
 				end
-				ki = length(all_neighbors(g,i));
-				kj = length(all_neighbors(g,j));
-				sum -= (ki*kj)/(2*ne(g));
+				dq = modularity_change_(sum_in,sum_to,ki,kiin,ne(g));
+				push!(dqs,dq);
+			end
+			maxdq, idx = findmax(dqs);
+			# only change if modularity increases
+			if maxdq > 0
+				membership[v] = membership[all_neighbors(g,v)[idx]];
+				changed = true;
 			end
 		end
 	end
-	return sum/(2*ne(g))
+	return membership
 end
 
+"""
+    create_communityset(g::SimpleWeightedGraph, membership::AbstractArray)
+Takes array of community assignment and returns array of Community structs
+"""
+
+function create_communityset(g::SimpleWeightedGraph, membership::Array{Int,1})
+	communityset{Community,1} = [];
+	commnum = maximum(membership);
+	for i in 1:commnum
+		push!(communityset,Community(0,0,[]));
+	end
+	for v in vertices(g)
+		push!(communityset[membership[v]].members,v);
+		for n in all_neighbors(g,v)
+			if membership[n] == membership[v]
+				communityset[membership[v]].inner += g.weights[v,n];
+			else
+				communityset[membership[v]].into += g.weights[v,n];
+			end
+		end
+		# inner edges will be counted twice
+		communityset[membership[v]].inner = communityset[membership[v]].inner/2.0;
+	end
+
+	return communityset
+end
+
+"""
+    create_communityset(g::SimpleWeightedGraph, membership::AbstractArray)
+Takes array of community assignment and returns array of Community structs
+"""
+
+function create_communityset(g::SimpleGraph, membership::Array{Int,1})
+        communityset{Community,1} = [];
+        commnum = maximum(membership);
+        for i in 1:commnum
+                push!(communityset,Community(0,0,[]));
+        end
+        for v in vertices(g)
+                push!(communityset[membership[v]].members,v);
+                for n in all_neighbors(g,v)
+                        if membership[n] == membership[v]
+                                communityset[membership[v]].inner += 1;
+                        else
+                                communityset[membership[v]].into += 1;
+                        end
+                end
+		# inner edges will be counted twice
+                communityset[membership[v]].inner = communityset[membership[v]].inner/2.0;
+        end
+
+        return communityset
+end
+
+
+
+"""
+    modularity_change_(sum_in::Number, sum_to::Number, ki::Number, kiin::Number, m::NUmber)
+Calculates the change in modularity
+"""
+
+function modularity_change_(sum_in::Number, sum_to::Number, ki::Number, kiin::Number, m::Number)
+	a = (sum_in + kiin)/(2*m);
+	b = (sum_to + ki)/(2*m);
+	c = sum_in/(2*m);
+	d = sum_to/(2*m);
+	f = ki/(2*m);
+	dQ = a - (b^2) - c + (d^2) + (f^2);
+	return dQ;
+end
 
 """
     community_detection_nback(g::AbstractGraph, k::Int)

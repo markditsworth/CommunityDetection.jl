@@ -131,12 +131,17 @@ end
     add_edge!(g,3,4);
     add_edge!(g,3,5);
     add_edge!(g,4,5);
-    println(length(all_neighbors(g,3)));
     community_membership = [1,1,1,2,2];
-
     # test modularity
-    q = modularity(g,community_membership);
+    q = modularity(g,community_membership)
     @test q == 1.0/9;
+
+    g = Graph(3);
+    add_edge!(g,1,2);
+    add_edge!(g,2,3);
+    community_membership = [1,1,2];
+    q = modularity(g,community_membership)
+    @test q == -0.125;
     end
 
 end
