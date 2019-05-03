@@ -13,13 +13,68 @@ mutable struct Community
 end
 
 """
-    louvain_step(g::SimpleWeightedGraph, membership::AbstractArray)
+    consolidate_graph(membership::AbstractArray, cset::Array{Community})
+
+Return SimpleWeightedGraph of the new network, where each community is reduced
+to a node, and edges
+"""
+
+function consolidate_graph(membership::AbstractArray, cset::Array{Community})
+	g = SimpleWeightedGraph(length(cset));
+	for i in 1:length(cset)
+		g.add_edge!(g,i,i,cset[i].inner);
+	end
+	# TODO: connect nodes
+	return g
+end
+
+"""
+    louvain_step!(membership::AbstractArray, g::SimpleGraph)
 
 Return an updated membership array after one iteration of the first step in Louvain
 community detection.
 """
 
-function louvain_step(g::SimpleWeightedGraph, membership::AbstractArray)
+function louvain_step!(membership::AbstractArray, g::SimpleGraph)
+        changed = true;
+        while changed
+                changed = false
+                cset = create_communityset(g,membership);
+                for v in vertices(g)
+                        ki = length(all_neighbors(g,v));
+                        dqs = [];
+                        for neighbor in all_neighbors(g,v)
+                                sum_in = cset[membership[neighbor]].inner;
+                                sum_to = cset[membership[neighbor]].into;
+                                kiin=0;
+                                for n in cset[membership[neighbor]].members
+                                        if has_edge(g,v,n)
+                                                kiin += 1;
+                                        end
+                                end
+                                dq = modularity_change_(sum_in,sum_to,ki,kiin,ne(g));
+                                push!(dqs,dq);
+                        end
+                        maxdq, idx = findmax(dqs);
+                        # only change if modularity increases
+                        if maxdq > 0
+                                membership[v] = membership[all_neighbors(g,v)[idx]];
+                                changed = true;
+                        end
+                end
+        end
+	return cset
+end
+
+
+"""
+    louvain_step!(membership::AbstractArray, g::SimpleWeightedGraph)
+
+Return an updated membership array after one iteration of the first step in Louvain
+community detection.
+"""
+
+function louvain_step!(membership::AbstractArray, g::SimpleWeightedGraph)
 	changed = true;
 	while changed
 		changed = false
@@ -47,7 +102,7 @@ function louvain_step(g::SimpleWeightedGraph, membership::AbstractArray)
 			end
 		end
 	end
-	return membership
+	return cset
 end
 
 """
