@@ -6,13 +6,54 @@ using Clustering: kmeans
 
 export community_detection_nback, community_detection_bethe
 
+function louvain_step()
+	# get sum of edges
+	# optimize modularity
+	# update community membership
+end
 
 """
-    modularity_change_(sum_in::Number, sum_to::Number, ki::Number, kiin::Number, m::NUmber)
+    optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number, counts::AbstractArray)
+modifies community membership such that modularity in g is maximized
+"""
+
+function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number, counts::AbstractArray)
+	moved = true;
+	improved = false;
+	while moved
+		moved = false;
+		for v in vertices(g)
+			best_comm = comms[n];
+			old_comm = comms[n];
+			max_dq = 0;
+
+			# calc sum_in
+			for n in all_neighbors(g,v)
+				# ignore self-loops
+				# calculate remaining required values
+				dq = modularity_change(sum_in, sum_to, ki, kiin, m);
+				if dq > max_dq
+					max_dq = dq
+					best_community = # updated best_community
+				end
+			end
+			if best_community != old_community
+				moved = true;
+				improved = true;
+			end
+			# update community assignments
+		end
+	end
+	return improved
+end
+
+
+"""
+    modularity_change(sum_in::Number, sum_to::Number, ki::Number, kiin::Number, m::NUmber)
 Calculates the change in modularity
 """
 
-function modularity_change_(sum_in::Number, sum_to::Number, ki::Number, kiin::Number, m::Number)
+function modularity_change(sum_in::Number, sum_to::Number, ki::Number, kiin::Number, m::Number)
 	a = (sum_in + kiin)/(2*m);
 	b = (sum_to + ki)/(2*m);
 	c = sum_in/(2*m);
