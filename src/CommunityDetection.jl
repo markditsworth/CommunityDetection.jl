@@ -13,6 +13,27 @@ function louvain_step()
 end
 
 """
+    sum_up_edges(g::SimpleGraph)
+returns the sum of edges in graph g
+"""
+function sum_up_edges(g::SimpleGraph)
+	return ne(g);
+end
+
+"""
+    sum_up_edges(g::SimpleWeightedGraph)
+returns sum of weighted edges in graph g
+"""
+
+function sum_up_edges(g::SimpleWeightedGraph)
+	sum_edges = 0.0;
+	for edge in edges(g)
+		sum_edges += edge.weight;
+	end
+	return sum_edges;
+end
+
+"""
     optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number, counts::AbstractArray)
 modifies community membership such that modularity in g is maximized
 """
@@ -31,7 +52,7 @@ function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::N
 			for n in all_neighbors(g,v)
 				# ignore self-loops
 				# calculate remaining required values
-				dq = modularity_change(sum_in, sum_to, ki, kiin, m);
+				dq = modularity_change(sum_in, sum_to, ki, kiin, sum_edges);
 				if dq > max_dq
 					max_dq = dq
 					best_community = # updated best_community
