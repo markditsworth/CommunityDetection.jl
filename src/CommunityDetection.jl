@@ -6,6 +6,14 @@ using Clustering: kmeans
 
 export community_detection_nback, community_detection_bethe
 
+"""
+    community_detection_louvain(g::SimpleGraph)
+
+### References
+- [V. Blondel](https://arxiv.org/pdf/0803.0476.pdf)
+- [D. Ruths](https://github.com/networkdynamics/zenlib)
+"""
+
 function louvain_step()
 	# get sum of edges
 	# optimize modularity
@@ -56,6 +64,43 @@ function sum_incident_edges(g::SimpleWeightedGraph,v::Int)
 end
 
 """
+    create_meta_graph(g::SimpleGraph,comms::AbstractArray)
+consolidates the communities into nodes themselves, and lumps edges together.
+"""
+
+function create_meta_graph(g::SimpleGraph,comms::AbstractArray)
+	G = SimpleWeightedGraph(maximum(comms));
+	for e in edges(g)
+		if has_edge(G,comms[e.src],comms[e.dst])
+			G.weights[comms[e.src],comms[e.dst]] += 1;
+			G.weights[comms[e.dst],comms[e.src]] = G.weights[comms[e.src],comms[e.dst]];
+		else
+			add_edge!(G,comms[e.src],comms[e.dst],1);
+		end
+	end
+	return G
+end
+
+"""
+    create_meta_graph(g::SimpleWeightedGraph,comms::AbstractArray)
+consolidates the communities into nodes themselves, and lumps edges together.
+"""
+
+function create_meta_graph(g::SimpleWeightedGraph,comms::AbstractArray)
+        G = SimpleWeightedGraph(maximum(comms));
+        for e in edges(g)
+                if has_edge(G,comms[e.src],comms[e.dst])
+			G.weights[comms[e.src],comms[e.dst]] += g.weights[e.dst,e.src];
+			G.weights[comms[e.dst],comms[e.src]] = G.weights[comms[e.src],comms[e.dst]];
+                else
+			add_edge!(G,comms[e.src],comms[e.dst],g.weights[e.dst,e.src]);
+                end
+        end
+        return G
+end
+
+
+"""
     optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number, counts::AbstractArray)
 modifies community membership such that modularity in g is maximized
 """
@@ -80,10 +125,11 @@ function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::N
 				# calculate remaining required values
 				sum_in = 0; #because g::SimpleGraph, it is the first step, and each node is its own community
 				sum_to = length(all_neighbors(g,n)) - sum_in;
+				kiin = convert(Int,has_edge(g,v,c));
 				dq = modularity_change(sum_in, sum_to, ki, kiin, sum_edges);
 				if dq > max_dq
 					max_dq = dq;
-					best_community = # updated best_community
+					best_community = comms[n]
 				end
 			end
 			if best_community != old_community
@@ -91,6 +137,7 @@ function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::N
 				improved = true;
 			end
 			# update community assignments
+			comms[v] = best_community;
 		end
 	end
 	return improved
@@ -177,7 +224,6 @@ function nonbacktrack_embedding(g::AbstractGraph, k::Int)
 end
 
 
-
 """
     community_detection_bethe(g::AbstractGraph, k=-1; kmax=15)
 
@@ -212,5 +258,4 @@ function community_detection_bethe(g::AbstractGraph, k::Int=-1; kmax::Int=15)
     labels = kmeans(collect(transpose(eigv[:,2:k])), k).assignments
     return labels
 end
-
 end #module
