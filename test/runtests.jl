@@ -2,11 +2,11 @@
 include("/opt/src/CommunityDetection.jl")
 using .CommunityDetection
 using LightGraphs
+using SimpleWeightedGraphs
 using LinearAlgebra: I, norm
 using ArnoldiMethod: LR
 using SparseArrays: sparse
 using Test
-
 
 """ Spectral embedding of the non-backtracking matrix of `g`
 (see [Krzakala et al.](http://www.pnas.org/content/110/52/20935.short)).
@@ -123,25 +123,63 @@ end
 end
 
 @testset "Louvain" begin
-    # create test network
+    # test utility functions on unweighted graph
     g = Graph(5);
     add_edge!(g,1,2);
     add_edge!(g,1,3);
-    add_edge!(g,2,3);
-    add_edge!(g,3,4);
+    add_edge!(g,2,5);
     add_edge!(g,3,5);
     add_edge!(g,4,5);
-    community_membership = [1,1,1,2,2];
-    # test modularity
-    q = modularity(g,community_membership)
-    @test q == 1.0/9;
-
-    g = Graph(3);
-    add_edge!(g,1,2);
-    add_edge!(g,2,3);
-    community_membership = [1,1,2];
-    q = modularity(g,community_membership)
-    @test q == -0.125;
+    @test CommunityDetection.sum_up_edges(g) == 5
+    @test CommunityDetection.sum_incident_edges(g,5) == 3
+    # test the meta-graph creation
+    community_labels = [1,1,2,2,2];
+    g_meta = CommunityDetection.create_meta_graph(g,community_labels);
+    @test g_meta.weights[1,1] == 1
+    @test g_meta.weights[2,2] == 2
+    @test g_meta.weights[1,2] == 2
+    @test g_meta.weights[2,1] == 2
+    # test utility function on weighted graph
+    g = SimpleWeightedGraph([1,1,5,5,5],[2,3,2,3,4],[1,2,3,4,5]);
+    @test CommunityDetection.sum_up_edges(g) == 15
+    @test CommunityDetection.sum_incident_edges(g,5) == 12
+    # test the meta-graph creation
+    g_meta = CommunityDetection.create_meta_graph(g,community_labels);
+    @test g_meta.weights[1,1] == 1
+    @test g_meta.weights[2,2] == 9
+    @test g_meta.weights[1,2] == 5
+    @test g_meta.weights[2,1] == 5
+    # test the optimization of modularity. Two cliques are joined by one edge,
+    # and two nodes from different cliques are put in the other's community.
+    # The resulting optimized communities should be the two cliques.
+    g = Graph(10);
+    for i in 1:5
+	    for j in 1:5
+		    if i > j
+			    add_edge!(g,i,j);
+			    add_edge!(g,i+5,j+5);
+		    end
+	    end
     end
-
+    add_edge!(g,3,6);
+    community_labels = [2,1,1,1,1,2,2,2,1,2];
+    sum_edges = CommunityDetection.sum_up_edges(g);
+    CommunityDetection.optimize_modularity!(community_labels,g,sum_edges);
+    @test community_labels == [1,1,1,1,1,2,2,2,2,2]
+    # test on weighted graph
+    g = SimpleWeightedGraph(10);
+    for i in 1:5
+	    for j in 1:5
+		    if i > j
+			    add_edge!(g,i,j,rand(2:5));
+			    add_edge!(g,i+5,j+5,rand(2:5));
+		    end
+	    end
+    end
+    add_edge!(g,3,6,rand(2:5));
+    community_labels = [2,1,1,1,1,2,2,2,1,2];
+    sum_edges = CommunityDetection.sum_up_edges(g);
+    CommunityDetection.optimize_modularity!(community_labels,g,sum_edges);
+    @test community_labels == [1,1,1,1,1,2,2,2,2,2]
+end
 end

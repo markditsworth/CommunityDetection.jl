@@ -8,7 +8,7 @@ export community_detection_nback, community_detection_bethe
 
 """
     community_detection_louvain(g::SimpleGraph)
-
+    Code is largely drawn from the Zen python library (D. Ruths).
 ### References
 - [V. Blondel](https://arxiv.org/pdf/0803.0476.pdf)
 - [D. Ruths](https://github.com/networkdynamics/zenlib)
@@ -57,7 +57,7 @@ returns the sum of the edges incident to vertex v
 
 function sum_incident_edges(g::SimpleWeightedGraph,v::Int)
 	k=0.0;
-	for n in neigbors(g,v)
+	for n in neighbors(g,v)
 		k += g.weights[v,n]
 	end
 	return k
@@ -101,18 +101,18 @@ end
 
 
 """
-    optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number, counts::AbstractArray)
+    optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number)
 modifies community membership such that modularity in g is maximized
 """
 
-function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number, counts::AbstractArray)
+function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::Number)
 	moved = true;
 	improved = false;
 	while moved
 		moved = false;
 		for v in vertices(g)
-			best_comm = comms[v];
-			old_comm = comms[v];
+			best_community = comms[v];
+			old_community = comms[v];
 			max_dq = 0;
 				
 			# calc ki
@@ -125,7 +125,7 @@ function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::N
 				# calculate remaining required values
 				sum_in = 0; #because g::SimpleGraph, it is the first step, and each node is its own community
 				sum_to = length(all_neighbors(g,n)) - sum_in;
-				kiin = convert(Int,has_edge(g,v,c));
+				kiin = convert(Int,has_edge(g,v,n));
 				dq = modularity_change(sum_in, sum_to, ki, kiin, sum_edges);
 				if dq > max_dq
 					max_dq = dq;
@@ -142,6 +142,56 @@ function optimize_modularity!(comms::AbstractArray, g::SimpleGraph, sum_edges::N
 	end
 	return improved
 end
+
+"""
+    optimize_modularity!(comms::AbstractArray, g::SimpleWeightedGraph, sum_edges::Number)
+modifies community membership such that modularity in g is maximized
+"""
+
+function optimize_modularity!(comms::AbstractArray, g::SimpleWeightedGraph, sum_edges::Number)
+        moved = true;
+        improved = false;
+        while moved
+                moved = false;
+                for v in vertices(g)
+                        best_community = comms[v];
+                        old_community = comms[v];
+                        max_dq = 0;
+
+                        # calc ki
+                        ki = 0;
+			for i in all_neighbors(g,v)
+				ki += g.weights[v,i]
+			end
+                        for n in all_neighbors(g,v)
+                                # ignore self-loops
+                                if n == v
+                                        continue
+                                end
+                                # calculate remaining required values
+				sum_in = g.weights[n,n];
+				sum_to = 0;
+				for neighbor in all_neighbors(g,n)
+					sum_to += g.weights[n,neighbor];
+				end
+				kiin = g.weights[v,n];
+                                dq = modularity_change(sum_in, sum_to, ki, kiin, sum_edges);
+                                if dq > max_dq
+                                        max_dq = dq;
+                                        best_community = comms[n]
+                                end
+                        end
+                        if best_community != old_community
+                                moved = true;
+                                improved = true;
+                        end
+                        # update community assignments
+                        comms[v] = best_community;
+                end
+        end
+        return improved
+end
+
 
 
 """
