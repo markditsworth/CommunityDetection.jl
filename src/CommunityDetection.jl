@@ -20,6 +20,50 @@ function louvain_step()
 	# update community membership
 end
 
+""" renumber!(arr::AbstractArray)
+Renumbers elements such that they are from 1:n
+E.g. [2,4,3,3,6] -> [1,3,2,2,4]
+"""
+
+function renumber!(arr::AbstractArray)
+	sorted_unique = sort(collect(Set(arr)));
+	conversion_dict = Dict()
+	for idx in 1:length(sorted_unique);
+		conversion_dict[sorted_unique[idx]] = idx;
+	end
+	for i in 1:length(arr)
+		arr[i] = conversion_dict[arr[i]];
+	end
+end
+
+""" make_community_set(comms::AbstractArray)
+returns dict of community members
+"""
+
+function make_community_set(comms::AbstractArray)
+	community_set = Dict()
+	for i in comms
+		community_set[i] = i;
+	end
+	return community_set
+end
+
+""" make_community_set(comms::AbstractArray,cset::Dict)
+returns consonlidated community set based on the joined communities
+"""
+
+function make_community_set(comms::AbstractArray,cset::Dict)
+	community_set = Dict();
+	# initialize community_set
+	for i in 1:maximum(comms)
+		community_set[i] = [];
+	end
+	for idx in 1:length(comms)
+		append!(community_set[comms[idx]],cset[idx]);
+	end
+	return community_set
+end
+
 """
     sum_up_edges(g::SimpleGraph)
 returns the sum of edges in graph g

@@ -123,6 +123,20 @@ end
 end
 
 @testset "Louvain" begin
+    # test general utility functions
+    arr = [2,3,2,5,9,7,5];
+    CommunityDetection.renumber!(arr)
+    @test arr == [1,2,1,3,5,4,3]
+    arr = [1,2,3];
+    d = CommunityDetection.make_community_set(arr);
+    @test sort(collect(keys(d))) == [1,2,3]
+    @test sort(collect(values(d))) == [1,2,3]
+    cset = Dict(((1,[1,3,6]),(2,[2,7]),(3,[4,5])));
+    comms = [1,2,2];
+    new_cset = CommunityDetection.make_community_set(comms,cset);
+    @test sort(collect(keys(new_cset))) == [1,2];
+    @test new_cset[1] == [1,3,6]
+    @test sort(new_cset[2]) == [2,4,5,7]
     # test utility functions on unweighted graph
     g = Graph(5);
     add_edge!(g,1,2);
@@ -171,12 +185,12 @@ end
     for i in 1:5
 	    for j in 1:5
 		    if i > j
-			    add_edge!(g,i,j,rand(2:5));
-			    add_edge!(g,i+5,j+5,rand(2:5));
+			    add_edge!(g,i,j,1);
+			    add_edge!(g,i+5,j+5,1);
 		    end
 	    end
     end
-    add_edge!(g,3,6,rand(2:5));
+    add_edge!(g,3,6,1);
     community_labels = [2,1,1,1,1,2,2,2,1,2];
     sum_edges = CommunityDetection.sum_up_edges(g);
     CommunityDetection.optimize_modularity!(community_labels,g,sum_edges);
