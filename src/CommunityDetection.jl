@@ -4,21 +4,65 @@ using ArnoldiMethod: LR, SR
 using LinearAlgebra: I, Diagonal
 using Clustering: kmeans
 
-export community_detection_nback, community_detection_bethe
+export community_detection_nback, community_detection_bethe, community_detection_louvain
 
 """
-    community_detection_louvain(g::SimpleGraph)
-    Code is largely drawn from the Zen python library (D. Ruths).
+    community_detection_louvain(g)
+g: SimpleGraph or SimpleWeightedGraph
+returns: community set - Dict(community id number => array of vertices)
+Begins with each node in its own community, and iteratively joins communities such that the greatest increase in modularity
+is achieved. Iterates until not increase in modularity is possible.
+Code is largely drawn from the Zen python library (D. Ruths).
+
 ### References
 - [V. Blondel](https://arxiv.org/pdf/0803.0476.pdf)
 - [D. Ruths](https://github.com/networkdynamics/zenlib)
 """
 
-function louvain_step()
-	# get sum of edges
-	# optimize modularity
-	# update community membership
+function community_detection_louvain(g)
+	comms = collect(1:nv(g));
+	improved, cset = louvain_step(g,comms);
+	meta_g = create_meta_graph(g,comms);
+	while improved
+		comms = collect(1:nv(meta_g));
+		improved, cset = louvain_step(meta_g,comms,cset);
+		if improved
+			meta_g = create_meta_graph(meta_g,comms);
+		end
+	end
+	return cset
 end
+
+""" louvain_step(g, comms::AbstractArray, cset::Dict)
+Performs the step of optimizing community membership for modularity
+"""
+
+function louvain_step(g,comms::AbstractArray,cset::Dict)
+	# get sum of edges
+	sum_edges = sum_up_edges(g);
+	# optimize modularity
+	improved = optimize_modularity!(comms, g, sum_edges);
+	renumber!(comms);
+	# update community membership
+	cset = make_community_set(comms,cset);
+	return improved,cset
+end
+
+""" louvain_step(g, comms::AbstractArray)
+Performs the step of optimizing community membership for modularity, with no initial community set
+"""
+
+function louvain_step(g,comms::AbstractArray)
+        # get sum of edges
+        sum_edges = sum_up_edges(g);
+        # optimize modularity
+        improved = optimize_modularity!(comms, g, sum_edges);
+	renumber!(comms);
+        # update community membership
+        cset = make_community_set(comms);
+        return improved,cset
+end
+
 
 """ renumber!(arr::AbstractArray)
 Renumbers elements such that they are from 1:n

@@ -195,5 +195,11 @@ end
     sum_edges = CommunityDetection.sum_up_edges(g);
     CommunityDetection.optimize_modularity!(community_labels,g,sum_edges);
     @test community_labels == [1,1,1,1,1,2,2,2,2,2]
+    # test full louvain method on the above graph of two connected cliques
+    cset = community_detection_louvain(g)
+    @test sort(collect(keys(cset))) == [1,2]
+    println(cset[1])
+    println(cset[2])
+    #@test (sort(collect(cset[1])) == [1,2,3,4,5] && sort(collect(cset[2])) == [6,7,8,9,10]) || (sort(collect(cset[1])) == [6,7,8,9,10] && sort(collect(cset[2])) == [1,2,3,4,5])
 end
 end
