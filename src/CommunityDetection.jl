@@ -22,10 +22,12 @@ Code is largely drawn from the Zen python library (D. Ruths).
 function community_detection_louvain(g)
 	comms = collect(1:nv(g));
 	improved, cset = louvain_step(g,comms);
+	println(cset);
 	meta_g = create_meta_graph(g,comms);
 	while improved
 		comms = collect(1:nv(meta_g));
 		improved, cset = louvain_step(meta_g,comms,cset);
+		println(cset);
 		if improved
 			meta_g = create_meta_graph(meta_g,comms);
 		end
